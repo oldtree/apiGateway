@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -9,13 +10,14 @@ import (
 type Engine struct {
 	SrvMap map[string]http.Handler
 	sync.RWMutex
+	Notice chan *Event
 }
 
 var defaultEngine *Engine
-var singlef *sync.Once
+var singleinitf *sync.Once
 
 func DefaultEngine() *Engine {
-	singlef.Do(func() {
+	singleinitf.Do(func() {
 		defaultEngine = NewEngine()
 	})
 	return defaultEngine
@@ -24,6 +26,35 @@ func DefaultEngine() *Engine {
 func NewEngine() *Engine {
 	return &Engine{
 		SrvMap: make(map[string]http.Handler, 16),
+	}
+}
+
+func (e *Engine) Doorman() {
+	defer func() {
+		if re := recover(); re != nil {
+			log.Println("recover panic : ", re)
+		}
+	}()
+	for {
+		select {
+		case evt := <-e.Notice:
+			log.Printf("event [%d] happend [%s] \n", evt.EventType, evt.Content)
+			switch content := evt.Content.(type) {
+			case *ApiService:
+				switch evt.EventType {
+				case EventServiceAdd:
+					e.AddService((*ApiService)(content))
+				case EventServiceGet:
+				case EventServiceUpdate:
+				case EventServiceDelete:
+					e.DelService((*ApiService)(content))
+				default:
+					log.Printf("not support event [%s] \n", evt)
+				}
+			default:
+				log.Printf("not support event [%s] \n", evt)
+			}
+		}
 	}
 }
 

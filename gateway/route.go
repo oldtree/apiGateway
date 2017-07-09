@@ -8,6 +8,7 @@ import (
 )
 
 type RoutePathInfo struct {
+	Description string `json:"description,omitempty"`
 	ActionType  uint   `json:"action_type,omitempty"`
 	InnerPath   string `json:"inner_path,omitempty"`
 	InnerMethod string `json:"inner_method,omitempty"` //inner service request method
@@ -19,7 +20,7 @@ type RoutePathInfo struct {
 
 type Route struct {
 	router            *httprouter.Router
-	RouterMappingInfo map[string]*RoutePathInfo
+	RouterMappingInfo []*RoutePathInfo
 	srv               *ApiService
 }
 
@@ -32,7 +33,7 @@ func (r *Route) FillRouterInfo() {
 }
 
 func (r *Route) BuildRouteInfo() {
-	for key, value := range r.RouterMappingInfo {
+	for _, value := range r.RouterMappingInfo {
 		switch value.OuterMethod {
 		case "GET", "get":
 			switch value.InnerMethod {
@@ -87,7 +88,7 @@ func (r *Route) BuildRouteInfo() {
 				r.router.DELETE(value.OuterPath, r.srv.HandleDeleteMethod)
 			}
 		default:
-			log.Printf("path [%s] method [%s]is not support \n", key, value.OuterMethod)
+			log.Printf("path [%s] method [%s]is not support \n", _, value.OuterMethod)
 		}
 	}
 

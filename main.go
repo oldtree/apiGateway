@@ -7,13 +7,15 @@ import (
 	"runtime"
 	"syscall"
 
+	"fmt"
+
 	"github.com/oldtree/apiGateway/gateway"
 )
 
 func Init() {
-	eginx := gateway.NewEngine()
-	eginx.AddService(gateway.DefaultService)
-	http.ListenAndServe(":2222", eginx)
+	enginx := gateway.NewEngine()
+	enginx.AddService(gateway.DefaultService)
+	http.ListenAndServe(":2222", enginx)
 }
 
 func main() {
@@ -22,10 +24,15 @@ func main() {
 	Init()
 
 	sc := make(chan os.Signal, 1)
+
 	signal.Notify(sc,
 		syscall.SIGINT,
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
 	)
-	<-sc
+	select {
+	case si := <-sc:
+		fmt.Println("recv signal : ", si.String())
+	}
+
 }

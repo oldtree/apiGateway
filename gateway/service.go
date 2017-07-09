@@ -78,6 +78,7 @@ type ApiService struct {
 	BackendMap map[int]*Node `json:"backend_map,omitempty"`
 
 	ServiceName       string `json:"service_name,omitempty"`
+	Version           string `json:"version,omitempty"`
 	Protocal          string `json:"protocal,omitempty"`
 	LoadBlanceType    uint   `json:"load_blance_type,omitempty"`
 	ReadWriteTimeout  int64  `json:"read_write_timeout,omitempty"`
@@ -87,6 +88,7 @@ type ApiService struct {
 	client *http.Client `json:"client,omitempty"`
 
 	sync.Mutex `json:"mutex"`
+	OnlineTime time.Time `json:"online_time,omitempty"`
 }
 
 func NewApiService() *ApiService {
@@ -94,6 +96,40 @@ func NewApiService() *ApiService {
 		BackendMap: make(map[int]*Node, 16),
 	}
 	return apiSrv
+}
+
+func (srv *ApiService) MappingApiService(si *ServiceInfo) error {
+	if si == nil {
+		return ErrMappingServiceInfoFailed
+	}
+	////////start mapping service info//////////
+	srv.ServiceName = si.ServiceName
+	srv.Version = si.Version
+	srv.Protocal = si.Protocal
+	srv.LoadBlanceType = si.LoadBlanceType
+	srv.ReadWriteTimeout = int64(si.ReadWriteTimeout)
+	srv.ConnectionTimeout = int64(si.ConnectionTimeout)
+	srv.OnlineTime, _ = time.Parse("2006-01-02 15:04:05", si.Createtime)
+	if si.Api != nil {
+		if si.Api.Info != nil {
+			for _, Pathvalue := range si.Api.Info {
+				for _, methodValue := range Pathvalue.HandleMethed {
+					temp := &RoutePathInfo{
+						InnerPath:   Pathvalue.InnerRoutePath,
+						OuterPath:   Pathvalue.OuterRoutePath,
+						Description: Pathvalue.OuterRoutePath,
+						InnerMethod: methodValue.InnerMethod,
+						OuterMethod: methodValue.OuterMethod,
+						Auth:        Pathvalue.NeedAuth,
+						Status:      Pathvalue.Status,
+					}
+					srv.R.RouterMappingInfo = append(srv.R.RouterMappingInfo, temp)
+				}
+			}
+		}
+	}
+	////////end mapping service info//////////
+	return nil
 }
 
 func (srv *ApiService) InitServiceHttpClient() error {
@@ -122,7 +158,7 @@ func (srv *ApiService) InitServiceHttpClient() error {
 
 func copyRequest(srcR *http.Request, urlStr string, method string) (*http.Request, error) {
 	if srcR == nil {
-		return nil, fmt.Errorf("src request if nil")
+		return nil, fmt.Errorf("src request is nil")
 	}
 	var nReq *http.Request
 	var err error
