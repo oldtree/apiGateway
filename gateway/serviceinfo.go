@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -10,6 +11,9 @@ type MethodInfo struct {
 }
 
 type AuthInfo struct {
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+	Token    string `json:"token,omitempty"`
 }
 
 type RouteDesc struct {
@@ -27,7 +31,7 @@ func NewRouteDesc() *RouteDesc {
 }
 
 type ApiInfo struct {
-	Info []*RouteDesc `json:"api,omitempty"`
+	Info []*RouteDesc `json:"info,omitempty"`
 }
 
 func NewApiInfo() *ApiInfo {
@@ -50,4 +54,17 @@ func NewServiceInfo() *ServiceInfo {
 	return &ServiceInfo{
 		Createtime: time.Now().String(),
 	}
+}
+
+func (s *ServiceInfo) Encode() []byte {
+	data, _ := json.Marshal(s)
+	return data
+}
+
+func (s *ServiceInfo) Decode(data []byte) error {
+	err := json.Unmarshal(data, s)
+	if err != nil {
+		return err
+	}
+	return nil
 }

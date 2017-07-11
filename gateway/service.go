@@ -14,6 +14,8 @@ import (
 
 	"io"
 
+	"io/ioutil"
+
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -60,11 +62,26 @@ func InitDefaultService() {
 		w.Write(re.Json())
 	})
 	DefaultService.R.router.GET(fmt.Sprintf("/%s/app/handles", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-		var app []string
 		re := new(Result)
 		re.Code = 1
 		re.Description = "ok"
-		re.Data = app
+		re.Data = nil
+		w.Write(re.Json())
+	})
+	DefaultService.R.router.GET(fmt.Sprintf("/favicon.ico", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		data, err := ioutil.ReadFile("favicon.ico")
+		re := new(Result)
+		if err != nil {
+			re.Code = -1
+			re.Description = "error"
+			re.Data = err
+			w.Write(re.Json())
+		} else {
+			re.Code = 1
+			re.Description = "ok"
+			re.Data = data
+			w.Write(re.Json())
+		}
 		w.Write(re.Json())
 	})
 
@@ -95,6 +112,7 @@ func NewApiService() *ApiService {
 	apiSrv := &ApiService{
 		BackendMap: make(map[int]*Node, 16),
 	}
+	apiSrv.R = NewRoute(apiSrv)
 	return apiSrv
 }
 
@@ -109,7 +127,12 @@ func (srv *ApiService) MappingApiService(si *ServiceInfo) error {
 	srv.LoadBlanceType = si.LoadBlanceType
 	srv.ReadWriteTimeout = int64(si.ReadWriteTimeout)
 	srv.ConnectionTimeout = int64(si.ConnectionTimeout)
-	srv.OnlineTime, _ = time.Parse("2006-01-02 15:04:05", si.Createtime)
+	if si.Createtime == "" {
+		srv.OnlineTime = time.Now()
+	} else {
+		srv.OnlineTime, _ = time.Parse("2006-01-02 15:04:05", si.Createtime)
+	}
+
 	if si.Api != nil {
 		if si.Api.Info != nil {
 			for _, Pathvalue := range si.Api.Info {

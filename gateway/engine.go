@@ -26,6 +26,7 @@ func DefaultEngine() *Engine {
 func NewEngine() *Engine {
 	return &Engine{
 		SrvMap: make(map[string]http.Handler, 16),
+		Notice: make(chan *Event, 16),
 	}
 }
 
@@ -61,7 +62,6 @@ func (e *Engine) Doorman() {
 func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	servicePath := strings.TrimLeft(r.URL.Path, "/")
 	servicePath = strings.Split(servicePath, "/")[0]
-	println(servicePath)
 	if servicePath == "" {
 		http.Error(w, "Forbidden", 403)
 		return
