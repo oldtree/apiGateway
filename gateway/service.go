@@ -97,7 +97,7 @@ type ApiService struct {
 	ServiceName       string `json:"service_name,omitempty"`
 	Version           string `json:"version,omitempty"`
 	Protocal          string `json:"protocal,omitempty"`
-	LoadBlanceType    uint   `json:"load_blance_type,omitempty"`
+	LoadBalanceType   uint   `json:"load_balance_type,omitempty"`
 	ReadWriteTimeout  int64  `json:"read_write_timeout,omitempty"`
 	ConnectionTimeout int64  `json:"connection_timeout,omitempty"`
 
@@ -124,7 +124,7 @@ func (srv *ApiService) MappingApiService(si *ServiceInfo) error {
 	srv.ServiceName = si.ServiceName
 	srv.Version = si.Version
 	srv.Protocal = si.Protocal
-	srv.LoadBlanceType = si.LoadBlanceType
+	srv.LoadBalanceType = si.LoadBalanceType
 	srv.ReadWriteTimeout = int64(si.ReadWriteTimeout)
 	srv.ConnectionTimeout = int64(si.ConnectionTimeout)
 	if si.Createtime == "" {

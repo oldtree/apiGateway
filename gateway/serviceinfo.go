@@ -42,7 +42,7 @@ type ServiceInfo struct {
 	ServiceName       string   `json:"service_name,omitempty"`
 	Version           string   `json:"version,omitempty"`
 	Protocal          string   `json:"protocal,omitempty"`
-	LoadBlanceType    uint     `json:"load_blance_type,omitempty"`
+	LoadBalanceType   uint     `json:"load_balance_type,omitempty"`
 	ReadWriteTimeout  int      `json:"read_write_timeout,omitempty"`
 	ConnectionTimeout int      `json:"connection_timeout,omitempty"`
 	Api               *ApiInfo `json:"api,omitempty"`
