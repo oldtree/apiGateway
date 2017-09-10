@@ -1,4 +1,4 @@
-package gateway
+package etcdop
 
 import (
 	"context"
@@ -14,13 +14,19 @@ func NewEtcdCluster() *EtcdCluster {
 	return &EtcdCluster{}
 }
 
+type EtcdEvent struct {
+	Key   []byte `json:"key,omitempty"`
+	Value []byte `json:"value,omitempty"`
+	Index uint64 `json:"index,omitempty"`
+}
+
 type EtcdCluster struct {
 	ClusterAddress    []string
 	Proxy             string
 	ConnectionTimeout int64
 	RequestTimeout    int64
 	cli               *v3.Client
-	WatchRespChan     chan v3.WatchResponse
+	EtcdEventChan     chan *EtcdEvent
 }
 
 func (e *EtcdCluster) Init(address []string) error {
@@ -52,9 +58,18 @@ func (e *EtcdCluster) WatchDir(dirKey string) error {
 		if len(change.Events) <= 0 {
 			continue
 		}
+		eec := new(EtcdEvent)
 		switch change.Events[0].Type {
 		case v3.EventTypeDelete:
+			copy(eec.Key, change.Events[0].Kv.Key)
+			copy(eec.Value, change.Events[0].Kv.Key)
+			eec.Index = change.Header.GetRaftTerm()
+			e.EtcdEventChan <- eec
 		case v3.EventTypePut:
+			copy(eec.Key, change.Events[0].Kv.Key)
+			copy(eec.Value, change.Events[0].Kv.Key)
+			eec.Index = change.Header.GetRaftTerm()
+			e.EtcdEventChan <- eec
 		}
 	}
 	return nil
@@ -84,6 +99,7 @@ func (e *EtcdCluster) AddKeyValue(key, value string) error {
 		}
 		return err
 	}
+	log.Println(resp)
 	return nil
 }
 
@@ -130,5 +146,6 @@ func (e *EtcdCluster) DeleteKeyValue(key string) error {
 		}
 		return err
 	}
+	log.Println(resp)
 	return nil
 }

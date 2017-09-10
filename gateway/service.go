@@ -2,21 +2,20 @@ package gateway
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
-	"strings"
-
-	"io"
-
-	"io/ioutil"
-
 	"github.com/julienschmidt/httprouter"
+	"github.com/oldtree/apiGateway/gateway/servicedesc"
 )
 
 const (
@@ -33,8 +32,9 @@ func InitDefaultService() {
 	DefaultService.BackendMap = nil
 	DefaultService.ServiceName = "debug"
 	DefaultService.Protocal = "http"
-	DefaultService.LoadBlanceType = 0
+	DefaultService.LoadBalanceType = 0
 	DefaultService.R = NewRoute(DefaultService)
+
 	DefaultService.R.router.GET(fmt.Sprintf("/%s/info", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 		type Info struct {
 			GOPATH     string    `json:"gopath,omitempty"`
@@ -53,7 +53,6 @@ func InitDefaultService() {
 		sysinfo.Goroutine = runtime.NumGoroutine()
 		sysinfo.CgoCall = runtime.NumCgoCall()
 		sysinfo.PWD, _ = os.Getwd()
-		sysinfo.CpuProfile = string(runtime.CPUProfile())
 		sysinfo.StartTime = starttime
 		re := new(Result)
 		re.Code = 1
@@ -84,6 +83,10 @@ func InitDefaultService() {
 		}
 		w.Write(re.Json())
 	})
+	DefaultService.R.router.GET("/cmd", func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		pprof.Cmdline(w, req)
+	})
+	//DefaultService
 
 }
 
@@ -116,7 +119,7 @@ func NewApiService() *ApiService {
 	return apiSrv
 }
 
-func (srv *ApiService) MappingApiService(si *ServiceInfo) error {
+func (srv *ApiService) MappingApiService(si *servicedesc.ServiceInfo) error {
 	if si == nil {
 		return ErrMappingServiceInfoFailed
 	}
@@ -587,7 +590,7 @@ func (srv *ApiService) SelectNode() *Node {
 		}
 		return n
 	}
-	switch srv.LoadBlanceType {
+	switch srv.LoadBalanceType {
 	case LoadblanceRoundRobinType:
 		return nil
 	case LoadblanceRandomtype:
@@ -609,15 +612,19 @@ func (srv *ApiService) AddNode(n *Node) error {
 	}()
 	srv.Lock()
 	defer srv.Unlock()
-	if _, ok := srv.BackendMap[n.NodeId]; ok {
-		return fmt.Errorf("node [%d] is exist", n.NodeId)
+	if _, ok := srv.BackendMap[n.NodeID]; ok {
+		return fmt.Errorf("node [%d] is exist", n.NodeID)
 	} else {
-		srv.BackendMap[n.NodeId] = n
+		srv.BackendMap[n.NodeID] = n
 	}
 	return nil
 }
 
-func (srv *ApiService) RemoveNodoe(n *Node) error {
+func (srv ApiService) UpdateNode(n *Node) error {
+	return nil
+}
+
+func (srv *ApiService) RemoveNode(n *Node) error {
 	if n == nil {
 		return fmt.Errorf("node info is nil")
 	}
@@ -628,6 +635,6 @@ func (srv *ApiService) RemoveNodoe(n *Node) error {
 	}()
 	srv.Lock()
 	defer srv.Unlock()
-	delete(srv.BackendMap, n.NodeId)
+	delete(srv.BackendMap, n.NodeID)
 	return nil
 }

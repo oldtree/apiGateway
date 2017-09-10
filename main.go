@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"io/ioutil"
 
 	"github.com/oldtree/apiGateway/gateway"
+	"github.com/oldtree/apiGateway/gateway/servicedesc"
 )
 
 func Init() {
@@ -23,7 +25,7 @@ func Init() {
 		e := new(gateway.Event)
 		e.EventType = gateway.EventServiceAdd
 		e.TimeStamp = time.Now().String()
-		newservice := gateway.NewServiceInfo()
+		newservice := servicedesc.NewServiceInfo()
 		data, err := ioutil.ReadFile("sample.json")
 		if err != nil {
 			fmt.Println(err)
@@ -40,7 +42,7 @@ func Init() {
 		e.Content = srv
 		enginx.Notice <- e
 	}()
-	newservice := gateway.NewServiceInfo()
+	newservice := servicedesc.NewServiceInfo()
 	data, err := ioutil.ReadFile("sample.json")
 	if err != nil {
 		fmt.Println(err)
@@ -52,7 +54,33 @@ func Init() {
 		return
 	}
 	enginx.AddService(gateway.DefaultService)
-	http.ListenAndServe(":2222", enginx)
+	tlsconfig := &tls.Config{
+		// Causes servers to use Go's default ciphersuite preferences,
+		// which are tuned to avoid attacks. Does nothing on clients.
+		PreferServerCipherSuites: true,
+		// Only use curves which have assembly implementations
+		CurvePreferences: []tls.CurveID{
+			tls.CurveP256,
+			tls.X25519, // Go 1.8 only
+		},
+		MinVersion: tls.VersionTLS12,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305, // Go 1.8 only
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,   // Go 1.8 only
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
+	}
+	srv := http.Server{
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		TLSConfig:    tlsconfig,
+		Handler:      enginx,
+		Addr:         ":2222",
+	}
+	srv.ListenAndServe()
 }
 
 func main() {

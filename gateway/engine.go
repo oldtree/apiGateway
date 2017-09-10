@@ -49,6 +49,10 @@ func (e *Engine) Doorman() {
 				case EventServiceUpdate:
 				case EventServiceDelete:
 					e.DelService((*ApiService)(content))
+				case EventServiceNodeGet:
+				case EventServiceNodeAdd:
+				case EventServiceNodeUpdate:
+				case EventServiceNodeDelete:
 				default:
 					log.Printf("not support event [%s] \n", evt)
 				}
@@ -82,7 +86,7 @@ func (e *Engine) AddService(srv *ApiService) {
 	}
 	e.Lock()
 	defer e.Unlock()
-	e.SrvMap[srv.ServiceName] = srv.R.router
+	e.SrvMap[srv.ServiceName] = srv.R
 }
 
 func (e *Engine) DelService(srv *ApiService) {
@@ -92,6 +96,42 @@ func (e *Engine) DelService(srv *ApiService) {
 	e.Lock()
 	defer e.Unlock()
 	delete(e.SrvMap, srv.ServiceName)
+}
+
+func (e *Engine) AddServiceBackendNode(nd *Node) error {
+	if nd == nil {
+		return nil
+	}
+	e.RLock()
+	route := e.SrvMap[nd.ServeiceName]
+	e.RUnlock()
+
+	log.Println(route)
+	return nil
+}
+
+func (e *Engine) DeleteServiceBackendNode(nd *Node) error {
+	if nd == nil {
+		return nil
+	}
+	e.RLock()
+	route := e.SrvMap[nd.ServeiceName]
+	e.RUnlock()
+
+	log.Println(route)
+	return nil
+}
+
+func (e *Engine) UpdateServiceBackendNode(nd *Node) error {
+	if nd == nil {
+		return nil
+	}
+	e.RLock()
+	route := e.SrvMap[nd.ServeiceName]
+	e.RUnlock()
+
+	log.Println(route)
+	return nil
 }
 
 func (e *Engine) GetAppserviceList() []string {
