@@ -54,6 +54,8 @@ func Init() {
 		return
 	}
 	enginx.AddService(gateway.DefaultService)
+
+	//https://blog.cloudflare.com/exposing-go-on-the-internet/
 	tlsconfig := &tls.Config{
 		// Causes servers to use Go's default ciphersuite preferences,
 		// which are tuned to avoid attacks. Does nothing on clients.
@@ -74,8 +76,9 @@ func Init() {
 		},
 	}
 	srv := http.Server{
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
 		TLSConfig:    tlsconfig,
 		Handler:      enginx,
 		Addr:         ":2222",
