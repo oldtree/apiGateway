@@ -54,15 +54,15 @@
                                 "outer_method":"get"
                             },
                             {
-                                "inner_method":"get",
+                                "inner_method":"post",
                                 "outer_method":"post"
                             },
                             {
-                                "inner_method":"get",
+                                "inner_method":"put",
                                 "outer_method":"put"
                             },
                             {
-                                "inner_method":"get",
+                                "inner_method":"delete",
                                 "outer_method":"delete"
                             }
                         ]

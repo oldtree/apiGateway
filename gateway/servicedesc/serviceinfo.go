@@ -14,6 +14,7 @@ type AuthInfo struct {
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
 	Token    string `json:"token,omitempty"`
+	AuthType int    `json:"auth_type,omitempty"`
 }
 
 type RouteDesc struct {
@@ -39,15 +40,18 @@ func NewApiInfo() *ApiInfo {
 }
 
 type ServiceInfo struct {
-	ServiceName       string   `json:"service_name,omitempty"`
-	Version           string   `json:"version,omitempty"`
-	Protocal          string   `json:"protocal,omitempty"`
-	LoadBalanceType   uint     `json:"load_balance_type,omitempty"`
-	ReadWriteTimeout  int      `json:"read_write_timeout,omitempty"`
-	ConnectionTimeout int      `json:"connection_timeout,omitempty"`
-	Api               *ApiInfo `json:"api,omitempty"`
+	ServiceName string `json:"service_name,omitempty"`
+	Version     string `json:"version,omitempty"`
 
-	Createtime string
+	Protocal string `json:"protocal,omitempty"` // not use temp
+
+	LoadBalanceType   uint              `json:"load_balance_type,omitempty"`
+	ReadWriteTimeout  int               `json:"read_write_timeout,omitempty"`
+	ConnectionTimeout int               `json:"connection_timeout,omitempty"`
+	Api               *ApiInfo          `json:"api,omitempty"`
+	XEtag             map[string]string `json:"x_etag,omitempty"`
+
+	Createtime string `json:"createtime,omitempty"`
 }
 
 func NewServiceInfo() *ServiceInfo {

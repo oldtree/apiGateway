@@ -105,8 +105,10 @@ func (e *Engine) AddServiceBackendNode(nd *Node) error {
 	e.RLock()
 	route := e.SrvMap[nd.ServeiceName]
 	e.RUnlock()
-
-	log.Println(route)
+	err := route.(*Route).srvBelong.AddNode(nd)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -118,7 +120,10 @@ func (e *Engine) DeleteServiceBackendNode(nd *Node) error {
 	route := e.SrvMap[nd.ServeiceName]
 	e.RUnlock()
 
-	log.Println(route)
+	err := route.(*Route).srvBelong.RemoveNode(nd)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -130,7 +135,10 @@ func (e *Engine) UpdateServiceBackendNode(nd *Node) error {
 	route := e.SrvMap[nd.ServeiceName]
 	e.RUnlock()
 
-	log.Println(route)
+	err := route.(*Route).srvBelong.UpdateNode(nd)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

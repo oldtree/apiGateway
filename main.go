@@ -13,9 +13,13 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"flag"
+
 	"github.com/oldtree/apiGateway/gateway"
 	"github.com/oldtree/apiGateway/gateway/servicedesc"
 )
+
+var config = flag.String("config", "config.json", "config file path")
 
 func Init() {
 	enginx := gateway.NewEngine()
@@ -87,6 +91,7 @@ func Init() {
 }
 
 func main() {
+	flag.Parse()
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	Init()
