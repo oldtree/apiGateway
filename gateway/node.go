@@ -35,6 +35,19 @@ func NewNode() *Node {
 	return &Node{}
 }
 
+func NewDefaultNode(srv string, address string, id int, hostname string) *Node {
+	return &Node{
+		ServeiceName:   srv,
+		ConnectionType: "http",
+		Address:        address,
+		NodeID:         id,
+		NodeHost:       hostname,
+		Weight:         5,
+		Status:         1,
+		RecoverTimes:   30,
+	}
+}
+
 //FormatFromJSON format node info from []byte data
 func (n *Node) FormatFromJSON(data []byte) error {
 	err := json.Unmarshal(data, n)

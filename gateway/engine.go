@@ -1,11 +1,11 @@
 package gateway
 
 import (
-	"log"
 	"net/http"
 	"strings"
 	"sync"
 
+	"github.com/FlyCynomys/tools/log"
 	"github.com/oldtree/apiGateway/gateway/etcdop"
 )
 
@@ -36,13 +36,13 @@ func NewEngine() *Engine {
 func (e *Engine) Doorman() {
 	defer func() {
 		if re := recover(); re != nil {
-			log.Println("recover panic : ", re)
+			log.Info(re)
 		}
 	}()
 	for {
 		select {
 		case evt := <-e.Notice:
-			log.Printf("event [%d] happend [%s] \n", evt.EventType, evt.Content)
+			//log.Info(fmt.Printf("event [%d] happend [%s] \n", evt.EventType, evt.Content))
 			switch content := evt.Content.(type) {
 			case *ApiService:
 				switch evt.EventType {
@@ -50,17 +50,26 @@ func (e *Engine) Doorman() {
 					e.AddService((*ApiService)(content))
 				case EventServiceGet:
 				case EventServiceUpdate:
+					e.UpdateService((*ApiService)(content))
 				case EventServiceDelete:
 					e.DelService((*ApiService)(content))
+				default:
+					//log.Info(fmt.Printf("not support event [%s] \n", evt))
+				}
+			case *Node:
+				switch evt.EventType {
 				case EventServiceNodeGet:
 				case EventServiceNodeAdd:
+					e.AddServiceBackendNode((*Node)(content))
 				case EventServiceNodeUpdate:
+					e.AddServiceBackendNode((*Node)(content))
 				case EventServiceNodeDelete:
+					e.AddServiceBackendNode((*Node)(content))
 				default:
-					log.Printf("not support event [%s] \n", evt)
+					//log.Info(fmt.Printf("not support event [%s] \n", evt))
 				}
 			default:
-				log.Printf("not support event [%s] \n", evt)
+				//log.Info(fmt.Printf("not support event [%s] \n", evt))
 			}
 		}
 	}
@@ -84,6 +93,15 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *Engine) AddService(srv *ApiService) {
+	if srv == nil {
+		return
+	}
+	e.Lock()
+	defer e.Unlock()
+	e.SrvMap[srv.ServiceName] = srv.R
+}
+
+func (e *Engine) UpdateService(srv *ApiService) {
 	if srv == nil {
 		return
 	}

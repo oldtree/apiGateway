@@ -48,54 +48,54 @@ func (r *Route) BuildRouteInfo() {
 		case "GET", "get":
 			switch value.OuterMethod {
 			case "GET", "get":
-				r.router.GET(outerPath, r.srvBelong.HandleGetMethod)
+				r.router.GET(outerPath, r.srvBelong.HandleWrapGetMethod(value.InnerPath))
 			case "POST", "post":
-				r.router.POST(outerPath, r.srvBelong.HandlePostMethod)
+				r.router.POST(outerPath, r.srvBelong.HandleWrapPostMethod(value.InnerPath))
 			case "PUT", "put":
-				r.router.PUT(outerPath, r.srvBelong.HandlePutMethod)
+				r.router.PUT(outerPath, r.srvBelong.HandleWrapPutMethod(value.InnerPath))
 			case "DELETE", "delete":
-				r.router.DELETE(outerPath, r.srvBelong.HandleDeleteMethod)
+				r.router.DELETE(outerPath, r.srvBelong.HandleWrapDeleteMethod(value.InnerPath))
 			default:
-				r.router.GET(outerPath, r.srvBelong.HandleGetMethod)
+				r.router.GET(outerPath, r.srvBelong.HandleWrapGetMethod(value.InnerPath))
 			}
 		case "POST", "post":
 			switch value.OuterMethod {
 			case "GET", "get":
-				r.router.GET(outerPath, r.srvBelong.HandleGetMethod)
+				r.router.GET(outerPath, r.srvBelong.HandleWrapGetMethod(value.InnerPath))
 			case "POST", "post":
-				r.router.POST(outerPath, r.srvBelong.HandlePostMethod)
+				r.router.POST(outerPath, r.srvBelong.HandleWrapPostMethod(value.InnerPath))
 			case "PUT", "put":
-				r.router.PUT(outerPath, r.srvBelong.HandlePutMethod)
+				r.router.PUT(outerPath, r.srvBelong.HandleWrapPutMethod(value.InnerPath))
 			case "DELETE", "delete":
-				r.router.DELETE(outerPath, r.srvBelong.HandleDeleteMethod)
+				r.router.DELETE(outerPath, r.srvBelong.HandleWrapDeleteMethod(value.InnerPath))
 			default:
-				r.router.POST(outerPath, r.srvBelong.HandlePostMethod)
+				r.router.GET(outerPath, r.srvBelong.HandleWrapGetMethod(value.InnerPath))
 			}
 		case "PUT", "put":
 			switch value.OuterMethod {
 			case "GET", "get":
-				r.router.GET(outerPath, r.srvBelong.HandleGetMethod)
+				r.router.GET(outerPath, r.srvBelong.HandleWrapGetMethod(value.InnerPath))
 			case "POST", "post":
-				r.router.POST(outerPath, r.srvBelong.HandlePostMethod)
+				r.router.POST(outerPath, r.srvBelong.HandleWrapPostMethod(value.InnerPath))
 			case "PUT", "put":
-				r.router.PUT(outerPath, r.srvBelong.HandlePutMethod)
+				r.router.PUT(outerPath, r.srvBelong.HandleWrapPutMethod(value.InnerPath))
 			case "DELETE", "delete":
-				r.router.DELETE(outerPath, r.srvBelong.HandleDeleteMethod)
+				r.router.DELETE(outerPath, r.srvBelong.HandleWrapDeleteMethod(value.InnerPath))
 			default:
-				r.router.PUT(outerPath, r.srvBelong.HandlePutMethod)
+				r.router.GET(outerPath, r.srvBelong.HandleWrapGetMethod(value.InnerPath))
 			}
 		case "DELETE", "delete":
 			switch value.OuterMethod {
 			case "GET", "get":
-				r.router.GET(outerPath, r.srvBelong.HandleGetMethod)
+				r.router.GET(outerPath, r.srvBelong.HandleWrapGetMethod(value.InnerPath))
 			case "POST", "post":
-				r.router.POST(outerPath, r.srvBelong.HandlePostMethod)
+				r.router.POST(outerPath, r.srvBelong.HandleWrapPostMethod(value.InnerPath))
 			case "PUT", "put":
-				r.router.PUT(outerPath, r.srvBelong.HandlePutMethod)
+				r.router.PUT(outerPath, r.srvBelong.HandleWrapPutMethod(value.InnerPath))
 			case "DELETE", "delete":
-				r.router.DELETE(outerPath, r.srvBelong.HandleDeleteMethod)
+				r.router.DELETE(outerPath, r.srvBelong.HandleWrapDeleteMethod(value.InnerPath))
 			default:
-				r.router.DELETE(outerPath, r.srvBelong.HandleDeleteMethod)
+				r.router.GET(outerPath, r.srvBelong.HandleWrapGetMethod(value.InnerPath))
 			}
 		default:
 			log.Printf("path method [%s]is not support \n", value.OuterMethod)

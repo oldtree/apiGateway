@@ -16,6 +16,7 @@ import (
 
 	"flag"
 
+	"github.com/FlyCynomys/tools/log"
 	"github.com/oldtree/apiGateway/gateway"
 	"github.com/oldtree/apiGateway/gateway/servicedesc"
 )
@@ -30,7 +31,7 @@ func Init() {
 		e := new(gateway.Event)
 		e.EventType = gateway.EventServiceAdd
 		e.TimeStamp = time.Now().String()
-		newservice := servicedesc.NewServiceInfo()
+		newservice := servicedesc.NewServiceDesc()
 		data, err := ioutil.ReadFile("sample.json")
 		if err != nil {
 			fmt.Println(err)
@@ -43,9 +44,27 @@ func Init() {
 		}
 		srv := gateway.NewApiService()
 		srv.MappingApiService(newservice)
+		err = srv.InitServiceHttpClient()
+		if err != nil {
+			log.Error(err)
+			return
+		}
 		srv.R.BuildRouteInfo()
 		e.Content = srv
 		enginx.Notice <- e
+
+		nodee := new(gateway.Event)
+		nodee.EventType = gateway.EventServiceNodeAdd
+		nodee.TimeStamp = time.Now().String()
+		data, err = ioutil.ReadFile("node.json")
+		if err != nil {
+			return
+		}
+		newnode := servicedesc.NewNodeDesc()
+		json.Unmarshal(data, newnode)
+		node := gateway.NewDefaultNode(newnode.SrvName, newnode.Address, newnode.Id, newnode.Hostname)
+		nodee.Content = node
+		enginx.Notice <- nodee
 	}()
 	enginx.AddService(gateway.DefaultService)
 

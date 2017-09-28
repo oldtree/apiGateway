@@ -1,5 +1,5 @@
 {
-    "service_name":"fork",
+    "service_name":"gear",
     "version":"0.0.1",
     "protocal":"http",
     "load_blance_type":1,

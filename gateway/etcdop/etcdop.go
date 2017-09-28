@@ -3,8 +3,9 @@ package etcdop
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
+
+	"github.com/FlyCynomys/tools/log"
 
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
@@ -50,7 +51,7 @@ func (e *EtcdCluster) WatchDir(dirKey string) error {
 	}
 	defer func() {
 		if re := recover(); re != nil {
-			log.Println("recover panic : ", re)
+			log.Info(re)
 		}
 	}()
 	ctx := context.Background()
@@ -78,9 +79,8 @@ func (e *EtcdCluster) WatchDir(dirKey string) error {
 
 func (e *EtcdCluster) Close() {
 	if err := e.cli.Close(); err != nil {
-		log.Println(err)
+		log.Error(err)
 	}
-
 	return
 }
 
@@ -101,7 +101,7 @@ func (e *EtcdCluster) AddKeyValue(key, value string) error {
 		}
 		return err
 	}
-	log.Println(resp)
+	log.Info(resp)
 	return nil
 }
 
@@ -148,6 +148,6 @@ func (e *EtcdCluster) DeleteKeyValue(key string) error {
 		}
 		return err
 	}
-	log.Println(resp)
+	log.Info(resp)
 	return nil
 }

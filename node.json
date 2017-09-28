@@ -1,0 +1,6 @@
+{
+    "srv_name":"gear",
+    "id":1,
+    "hostname":"Grapes-MacBook-Pro.local",
+    "address":"localhost:9000"
+}

@@ -4,17 +4,18 @@ import (
 	"encoding/json"
 )
 
-type NodeInfo struct {
-	Id       int64  `json:"id,omitempty"`
+type NodeDesc struct {
+	SrvName  string `json:"srv_name,omitempty"`
+	Id       int    `json:"id,omitempty"`
 	Hostname string `json:"hostname,omitempty"`
 	Address  string `json:"address,omitempty"`
 }
 
-func NewNodeInfo() *NodeInfo {
-	return &NodeInfo{}
+func NewNodeDesc() *NodeDesc {
+	return &NodeDesc{}
 }
 
-func (n *NodeInfo) FormatFromJson(data []byte) error {
+func (n *NodeDesc) FormatFromJson(data []byte) error {
 	err := json.Unmarshal(data, n)
 	if err != nil {
 		return err

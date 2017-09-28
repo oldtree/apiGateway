@@ -1,10 +1,10 @@
 package gateway
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/FlyCynomys/tools/log"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/oldtree/apiGateway/gateway/servicedesc"
@@ -119,7 +121,7 @@ func NewApiService() *ApiService {
 	return apiSrv
 }
 
-func (srv *ApiService) MappingApiService(si *servicedesc.ServiceInfo) error {
+func (srv *ApiService) MappingApiService(si *servicedesc.ServiceDesc) error {
 	if si == nil {
 		return ErrMappingServiceInfoFailed
 	}
@@ -150,10 +152,13 @@ func (srv *ApiService) MappingApiService(si *servicedesc.ServiceInfo) error {
 						Status:      Pathvalue.Status,
 					}
 					srv.R.RouterMappingInfo = append(srv.R.RouterMappingInfo, temp)
+
 				}
 			}
 		}
 	}
+	data, _ := json.Marshal(srv)
+	log.Info(string(data))
 	////////end mapping service info//////////
 	return nil
 }
@@ -170,10 +175,10 @@ func (srv *ApiService) InitServiceHttpClient() error {
 			}).DialContext,
 			DisableCompression:    false,
 			DisableKeepAlives:     false,
-			ResponseHeaderTimeout: time.Duration(srv.ReadWriteTimeout) * time.Second,
+			ResponseHeaderTimeout: 120 * time.Second,
 			MaxIdleConns:          100,
 			MaxIdleConnsPerHost:   10,
-			IdleConnTimeout:       120 * time.Second,
+			IdleConnTimeout:       300 * time.Second,
 		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return fmt.Errorf("redirect failed")
@@ -226,354 +231,366 @@ func copyRequest(srcR *http.Request, urlStr string, method string) (*http.Reques
 	return nReq, nil
 }
 
-func (srv *ApiService) HandleGetMethod(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	var (
-		status        int8
-		node          *Node
-		req2Endpoinrt *http.Request
-		err           error
-		retry         uint
-	)
-	retry = 0
-	for status == 0 {
-		node = srv.SelectNode()
-		if node == nil {
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(500)
-			w.Write([]byte("Internel server error"))
-			return
-		}
-		urlStr := fmt.Sprintf("%s://%s", srv.Protocal, node.Address)
-		req2Endpoinrt, err = copyRequest(req, urlStr, "GET")
-		if err != nil {
-			log.Println(err)
-			w.Write([]byte("forward request failed : " + err.Error()))
-			return
-		}
-		response, err := srv.client.Do(req2Endpoinrt)
-		if err != nil {
-			log.Println(err)
-			status = -1
-			w.Write([]byte("forward request failed : " + err.Error()))
-			return
-		}
-		defer response.Body.Close()
-		switch response.StatusCode / 100 {
-		case 2:
-			status = 1
-			node.Status = NodeStatusOK
-			for k, v := range response.Header {
-				for _, vv := range v {
-					w.Header().Set(k, vv)
-				}
-			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			io.Copy(w, response.Body)
-			return
-		case 3:
-			status = 1
-			node.Status = NodeStatusOK
-			if urlStrRedirect := response.Header.Get("Location"); urlStrRedirect != "" {
-				http.Redirect(w, req, urlStrRedirect, http.StatusFound)
-				return
-			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			w.Write([]byte("rediret to url"))
-			return
-		case 4:
-			status = 1
-			node.Status = NodeStatusOK
-			for k, v := range response.Header {
-				for _, vv := range v {
-					w.Header().Set(k, vv)
-				}
-			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			io.Copy(w, response.Body)
-			return
-		case 5:
-			if retry > 3 {
-				status = 0
-				node.Status = NodeStatusError
+func (srv *ApiService) HandleWrapGetMethod(innerpath string) httprouter.Handle {
+	return func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		var (
+			status        int8
+			node          *Node
+			req2Endpoinrt *http.Request
+			err           error
+			retry         uint
+		)
+		retry = 0
+		for status == 0 {
+			node = srv.SelectNode()
+			if node == nil {
 				w.Header().Set("Connection", "keep-alive")
-				w.WriteHeader(response.StatusCode)
+				w.WriteHeader(500)
 				w.Write([]byte("Internel server error"))
 				return
-			} else {
-				status = 0
-				node.Status = NodeStatusError
-				retry = retry + 1
-				continue
 			}
-		default:
+			urlStr := fmt.Sprintf("%s://%s/%s?%s", srv.Protocal, node.Address, innerpath, req.URL.RawQuery)
+			log.Info(urlStr)
+			req2Endpoinrt, err = copyRequest(req, urlStr, "GET")
+			if err != nil {
+				log.Debug(err)
+				w.Write([]byte("forward request failed : " + err.Error()))
+				return
+			}
+			response, err := srv.client.Do(req2Endpoinrt)
+			if err != nil {
+				log.Debug(err)
+				status = -1
+				w.Write([]byte("forward request failed : " + err.Error()))
+				return
+			}
+			defer response.Body.Close()
+			switch response.StatusCode / 100 {
+			case 2:
+				status = 1
+				node.Status = NodeStatusOK
+				for k, v := range response.Header {
+					for _, vv := range v {
+						w.Header().Set(k, vv)
+					}
+				}
+				w.Header().Set("Connection", "keep-alive")
+				w.WriteHeader(response.StatusCode)
+				io.Copy(w, response.Body)
+				return
+			case 3:
+				status = 1
+				node.Status = NodeStatusOK
+				if urlStrRedirect := response.Header.Get("Location"); urlStrRedirect != "" {
+					http.Redirect(w, req, urlStrRedirect, http.StatusFound)
+					return
+				}
+				w.Header().Set("Connection", "keep-alive")
+				w.WriteHeader(response.StatusCode)
+				w.Write([]byte("rediret to url"))
+				return
+			case 4:
+				status = 1
+				node.Status = NodeStatusOK
+				for k, v := range response.Header {
+					for _, vv := range v {
+						w.Header().Set(k, vv)
+					}
+				}
+				w.Header().Set("Connection", "keep-alive")
+				w.WriteHeader(response.StatusCode)
+				io.Copy(w, response.Body)
+				return
+			case 5:
+				if retry > 3 {
+					status = 0
+					node.Status = NodeStatusError
+					w.Header().Set("Connection", "keep-alive")
+					w.WriteHeader(response.StatusCode)
+					w.Write([]byte("Internel server error"))
+					return
+				} else {
+					status = 0
+					node.Status = NodeStatusError
+					retry = retry + 1
+					continue
+				}
+			default:
+			}
+			status = 1
 		}
-		status = 1
+		return
 	}
-	return
 }
 
-func (srv *ApiService) HandlePostMethod(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	var (
-		status        int8
-		node          *Node
-		req2Endpoinrt *http.Request
-		err           error
-		retry         uint
-	)
-	retry = 0
-	for status == 0 {
-		node = srv.SelectNode()
-		urlStr := fmt.Sprintf("%s://%s", srv.Protocal, node.Address)
-		req2Endpoinrt, err = copyRequest(req, urlStr, "POST")
-		if err != nil {
-			log.Println(err)
-			w.Write([]byte("forward request failed : " + err.Error()))
-			return
-		}
-		response, err := srv.client.Do(req2Endpoinrt)
-		if err != nil {
-			log.Println(err)
-			status = -1
-			w.Write([]byte("forward request failed : " + err.Error()))
-			return
-		}
-		defer response.Body.Close()
-		switch response.StatusCode / 100 {
-		case 2:
-			status = 1
-			node.Status = NodeStatusOK
-			for k, v := range response.Header {
-				for _, vv := range v {
-					w.Header().Set(k, vv)
-				}
-			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			io.Copy(w, response.Body)
-			return
-		case 3:
-			status = 1
-			node.Status = NodeStatusOK
-			if urlStrRedirect := response.Header.Get("Location"); urlStrRedirect != "" {
-				http.Redirect(w, req, urlStrRedirect, http.StatusFound)
+func (srv *ApiService) HandleWrapPostMethod(innerpath string) httprouter.Handle {
+	return func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		var (
+			status        int8
+			node          *Node
+			req2Endpoinrt *http.Request
+			err           error
+			retry         uint
+		)
+		retry = 0
+		for status == 0 {
+			node = srv.SelectNode()
+			urlStr := fmt.Sprintf("%s://%s/%s?%s", srv.Protocal, node.Address, innerpath, req.URL.RawQuery)
+			log.Info(urlStr)
+			req2Endpoinrt, err = copyRequest(req, urlStr, "POST")
+			if err != nil {
+				log.Debug(err)
+				w.Write([]byte("forward request failed : " + err.Error()))
 				return
 			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			w.Write([]byte("rediret to url"))
-			return
-		case 4:
-			status = 1
-			node.Status = NodeStatusOK
-			for k, v := range response.Header {
-				for _, vv := range v {
-					w.Header().Set(k, vv)
-				}
+			response, err := srv.client.Do(req2Endpoinrt)
+			if err != nil {
+				log.Debug(err)
+				status = -1
+				w.Write([]byte("forward request failed : " + err.Error()))
+				return
 			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			io.Copy(w, response.Body)
-			return
-		case 5:
-			if retry > 3 {
-				status = 0
-				node.Status = NodeStatusError
+			defer response.Body.Close()
+			switch response.StatusCode / 100 {
+			case 2:
+				status = 1
+				node.Status = NodeStatusOK
+				for k, v := range response.Header {
+					for _, vv := range v {
+						w.Header().Set(k, vv)
+					}
+				}
 				w.Header().Set("Connection", "keep-alive")
 				w.WriteHeader(response.StatusCode)
-				w.Write([]byte("Internel server error"))
+				io.Copy(w, response.Body)
 				return
-			} else {
-				status = 0
-				node.Status = NodeStatusError
-				retry = retry + 1
-				continue
+			case 3:
+				status = 1
+				node.Status = NodeStatusOK
+				if urlStrRedirect := response.Header.Get("Location"); urlStrRedirect != "" {
+					http.Redirect(w, req, urlStrRedirect, http.StatusFound)
+					return
+				}
+				w.Header().Set("Connection", "keep-alive")
+				w.WriteHeader(response.StatusCode)
+				w.Write([]byte("rediret to url"))
+				return
+			case 4:
+				status = 1
+				node.Status = NodeStatusOK
+				for k, v := range response.Header {
+					for _, vv := range v {
+						w.Header().Set(k, vv)
+					}
+				}
+				w.Header().Set("Connection", "keep-alive")
+				w.WriteHeader(response.StatusCode)
+				io.Copy(w, response.Body)
+				return
+			case 5:
+				if retry > 3 {
+					status = 0
+					node.Status = NodeStatusError
+					w.Header().Set("Connection", "keep-alive")
+					w.WriteHeader(response.StatusCode)
+					w.Write([]byte("Internel server error"))
+					return
+				} else {
+					status = 0
+					node.Status = NodeStatusError
+					retry = retry + 1
+					continue
+				}
+			default:
 			}
-		default:
+			status = 1
 		}
-		status = 1
+		return
 	}
-	return
 }
 
-func (srv *ApiService) HandlePutMethod(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	var (
-		status        int8
-		node          *Node
-		req2Endpoinrt *http.Request
-		err           error
-		retry         uint
-	)
-	retry = 0
-	for status == 0 {
-		node = srv.SelectNode()
-		if node == nil {
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(500)
-			w.Write([]byte("Internel server error"))
-			return
-		}
-		urlStr := fmt.Sprintf("%s://%s", srv.Protocal, node.Address)
-		req2Endpoinrt, err = copyRequest(req, urlStr, "PUT")
-		if err != nil {
-			log.Println(err)
-			w.Write([]byte("forward request failed : " + err.Error()))
-			return
-		}
-		response, err := srv.client.Do(req2Endpoinrt)
-		if err != nil {
-			log.Println(err)
-			status = -1
-			w.Write([]byte("forward request failed : " + err.Error()))
-			return
-		}
-		defer response.Body.Close()
-		switch response.StatusCode / 100 {
-		case 2:
-			status = 1
-			node.Status = NodeStatusOK
-			for k, v := range response.Header {
-				for _, vv := range v {
-					w.Header().Set(k, vv)
-				}
-			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			io.Copy(w, response.Body)
-			return
-		case 3:
-			status = 1
-			node.Status = NodeStatusOK
-			if urlStrRedirect := response.Header.Get("Location"); urlStrRedirect != "" {
-				http.Redirect(w, req, urlStrRedirect, http.StatusFound)
-				return
-			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			w.Write([]byte("rediret to url"))
-			return
-		case 4:
-			status = 1
-			node.Status = NodeStatusOK
-			for k, v := range response.Header {
-				for _, vv := range v {
-					w.Header().Set(k, vv)
-				}
-			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			io.Copy(w, response.Body)
-			return
-		case 5:
-			if retry > 3 {
-				status = 0
-				node.Status = NodeStatusError
+func (srv *ApiService) HandleWrapPutMethod(innerpath string) httprouter.Handle {
+	return func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		var (
+			status        int8
+			node          *Node
+			req2Endpoinrt *http.Request
+			err           error
+			retry         uint
+		)
+		retry = 0
+		for status == 0 {
+			node = srv.SelectNode()
+			if node == nil {
 				w.Header().Set("Connection", "keep-alive")
-				w.WriteHeader(response.StatusCode)
+				w.WriteHeader(500)
 				w.Write([]byte("Internel server error"))
 				return
-			} else {
-				status = 0
-				node.Status = NodeStatusError
-				retry = retry + 1
-				continue
 			}
-		default:
+			urlStr := fmt.Sprintf("%s://%s/%s?%s", srv.Protocal, node.Address, innerpath, req.URL.RawQuery)
+			log.Info(urlStr)
+			req2Endpoinrt, err = copyRequest(req, urlStr, "PUT")
+			if err != nil {
+				log.Debug(err)
+				w.Write([]byte("forward request failed : " + err.Error()))
+				return
+			}
+			response, err := srv.client.Do(req2Endpoinrt)
+			if err != nil {
+				log.Debug(err)
+				status = -1
+				w.Write([]byte("forward request failed : " + err.Error()))
+				return
+			}
+			defer response.Body.Close()
+			switch response.StatusCode / 100 {
+			case 2:
+				status = 1
+				node.Status = NodeStatusOK
+				for k, v := range response.Header {
+					for _, vv := range v {
+						w.Header().Set(k, vv)
+					}
+				}
+				w.Header().Set("Connection", "keep-alive")
+				w.WriteHeader(response.StatusCode)
+				io.Copy(w, response.Body)
+				return
+			case 3:
+				status = 1
+				node.Status = NodeStatusOK
+				if urlStrRedirect := response.Header.Get("Location"); urlStrRedirect != "" {
+					http.Redirect(w, req, urlStrRedirect, http.StatusFound)
+					return
+				}
+				w.Header().Set("Connection", "keep-alive")
+				w.WriteHeader(response.StatusCode)
+				w.Write([]byte("rediret to url"))
+				return
+			case 4:
+				status = 1
+				node.Status = NodeStatusOK
+				for k, v := range response.Header {
+					for _, vv := range v {
+						w.Header().Set(k, vv)
+					}
+				}
+				w.Header().Set("Connection", "keep-alive")
+				w.WriteHeader(response.StatusCode)
+				io.Copy(w, response.Body)
+				return
+			case 5:
+				if retry > 3 {
+					status = 0
+					node.Status = NodeStatusError
+					w.Header().Set("Connection", "keep-alive")
+					w.WriteHeader(response.StatusCode)
+					w.Write([]byte("Internel server error"))
+					return
+				} else {
+					status = 0
+					node.Status = NodeStatusError
+					retry = retry + 1
+					continue
+				}
+			default:
+			}
+			status = 1
 		}
-		status = 1
+		return
 	}
-	return
 }
 
-func (srv *ApiService) HandleDeleteMethod(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	var (
-		status        int8
-		node          *Node
-		req2Endpoinrt *http.Request
-		err           error
-		retry         uint
-	)
-	retry = 0
-	for status == 0 {
-		node = srv.SelectNode()
-		if node == nil {
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(500)
-			w.Write([]byte("Internel server error"))
-			return
-		}
-		urlStr := fmt.Sprintf("%s://%s", srv.Protocal, node.Address)
-		req2Endpoinrt, err = copyRequest(req, urlStr, "DELETE")
-		if err != nil {
-			log.Println(err)
-			w.Write([]byte("forward request failed : " + err.Error()))
-			return
-		}
-		response, err := srv.client.Do(req2Endpoinrt)
-		if err != nil {
-			log.Println(err)
-			status = -1
-			w.Write([]byte("forward request failed : " + err.Error()))
-			return
-		}
-		defer response.Body.Close()
-		switch response.StatusCode / 100 {
-		case 2:
-			status = 1
-			node.Status = NodeStatusOK
-			for k, v := range response.Header {
-				for _, vv := range v {
-					w.Header().Set(k, vv)
-				}
-			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			io.Copy(w, response.Body)
-			return
-		case 3:
-			status = 1
-			node.Status = NodeStatusOK
-			if urlStrRedirect := response.Header.Get("Location"); urlStrRedirect != "" {
-				http.Redirect(w, req, urlStrRedirect, http.StatusFound)
-				return
-			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			w.Write([]byte("rediret to url"))
-			return
-		case 4:
-			status = 1
-			node.Status = NodeStatusOK
-			for k, v := range response.Header {
-				for _, vv := range v {
-					w.Header().Set(k, vv)
-				}
-			}
-			w.Header().Set("Connection", "keep-alive")
-			w.WriteHeader(response.StatusCode)
-			io.Copy(w, response.Body)
-			return
-		case 5:
-			if retry > 3 {
-				status = 0
-				node.Status = NodeStatusError
+func (srv *ApiService) HandleWrapDeleteMethod(innerpath string) httprouter.Handle {
+	return func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		var (
+			status        int8
+			node          *Node
+			req2Endpoinrt *http.Request
+			err           error
+			retry         uint
+		)
+		retry = 0
+		for status == 0 {
+			node = srv.SelectNode()
+			if node == nil {
 				w.Header().Set("Connection", "keep-alive")
-				w.WriteHeader(response.StatusCode)
+				w.WriteHeader(500)
 				w.Write([]byte("Internel server error"))
 				return
-			} else {
-				status = 0
-				node.Status = NodeStatusError
-				retry = retry + 1
-				continue
 			}
-		default:
+			urlStr := fmt.Sprintf("%s://%s/%s?%s", srv.Protocal, node.Address, innerpath, req.URL.RawQuery)
+			log.Info(urlStr)
+			req2Endpoinrt, err = copyRequest(req, urlStr, "DELETE")
+			if err != nil {
+				log.Debug(err)
+				w.Write([]byte("forward request failed : " + err.Error()))
+				return
+			}
+			response, err := srv.client.Do(req2Endpoinrt)
+			if err != nil {
+				log.Debug(err)
+				status = -1
+				w.Write([]byte("forward request failed : " + err.Error()))
+				return
+			}
+			defer response.Body.Close()
+			switch response.StatusCode / 100 {
+			case 2:
+				status = 1
+				node.Status = NodeStatusOK
+				for k, v := range response.Header {
+					for _, vv := range v {
+						w.Header().Set(k, vv)
+					}
+				}
+				w.Header().Set("Connection", "keep-alive")
+				w.WriteHeader(response.StatusCode)
+				io.Copy(w, response.Body)
+				return
+			case 3:
+				status = 1
+				node.Status = NodeStatusOK
+				if urlStrRedirect := response.Header.Get("Location"); urlStrRedirect != "" {
+					http.Redirect(w, req, urlStrRedirect, http.StatusFound)
+					return
+				}
+				w.Header().Set("Connection", "keep-alive")
+				w.WriteHeader(response.StatusCode)
+				w.Write([]byte("rediret to url"))
+				return
+			case 4:
+				status = 1
+				node.Status = NodeStatusOK
+				for k, v := range response.Header {
+					for _, vv := range v {
+						w.Header().Set(k, vv)
+					}
+				}
+				w.Header().Set("Connection", "keep-alive")
+				w.WriteHeader(response.StatusCode)
+				io.Copy(w, response.Body)
+				return
+			case 5:
+				if retry > 3 {
+					status = 0
+					node.Status = NodeStatusError
+					w.Header().Set("Connection", "keep-alive")
+					w.WriteHeader(response.StatusCode)
+					w.Write([]byte("Internel server error"))
+					return
+				} else {
+					status = 0
+					node.Status = NodeStatusError
+					retry = retry + 1
+					continue
+				}
+			default:
+			}
+			status = 1
 		}
-		status = 1
+		return
 	}
-	return
 }
 
 func (srv *ApiService) SelectNode() *Node {
@@ -607,7 +624,7 @@ func (srv *ApiService) AddNode(n *Node) error {
 	}
 	defer func() {
 		if re := recover(); re != nil {
-			log.Println("recover panic : ", re)
+			log.Info(re)
 		}
 	}()
 	srv.Lock()
@@ -630,7 +647,7 @@ func (srv *ApiService) RemoveNode(n *Node) error {
 	}
 	defer func() {
 		if re := recover(); re != nil {
-			log.Println("recover panic : ", re)
+			log.Info(re)
 		}
 	}()
 	srv.Lock()
