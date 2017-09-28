@@ -1,12 +1,13 @@
-package nodedesc
+package servicedesc
 
 import (
 	"encoding/json"
 )
 
 type NodeInfo struct {
-	Id      int64  `json:"id,omitempty"`
-	Address string `json:"address,omitempty"`
+	Id       int64  `json:"id,omitempty"`
+	Hostname string `json:"hostname,omitempty"`
+	Address  string `json:"address,omitempty"`
 }
 
 func NewNodeInfo() *NodeInfo {

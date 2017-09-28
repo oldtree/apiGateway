@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	_ "net/http/pprof"
 
 	"flag"
 
@@ -46,17 +47,6 @@ func Init() {
 		e.Content = srv
 		enginx.Notice <- e
 	}()
-	newservice := servicedesc.NewServiceInfo()
-	data, err := ioutil.ReadFile("sample.json")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = json.Unmarshal(data, newservice)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 	enginx.AddService(gateway.DefaultService)
 
 	//https://blog.cloudflare.com/exposing-go-on-the-internet/

@@ -32,6 +32,11 @@ type Route struct {
 
 //ServeHTTP : interface method for http.Handler
 func (r *Route) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	w.Header().Set("Access-Control-Expose-Headers", "Content-Length")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	r.router.ServeHTTP(w, req)
 }
 

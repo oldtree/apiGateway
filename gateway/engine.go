@@ -5,12 +5,15 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/oldtree/apiGateway/gateway/etcdop"
 )
 
 type Engine struct {
 	SrvMap map[string]http.Handler
 	sync.RWMutex
-	Notice chan *Event
+	Notice        chan *Event
+	EtcdOperation *etcdop.EtcdCluster
 }
 
 var defaultEngine *Engine

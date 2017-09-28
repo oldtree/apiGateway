@@ -27,6 +27,7 @@ type EtcdCluster struct {
 	RequestTimeout    int64
 	cli               *v3.Client
 	EtcdEventChan     chan *EtcdEvent
+	WatchResp         v3.WatchChan
 }
 
 func (e *EtcdCluster) Init(address []string) error {
@@ -53,21 +54,21 @@ func (e *EtcdCluster) WatchDir(dirKey string) error {
 		}
 	}()
 	ctx := context.Background()
-	watcher := e.cli.Watch(ctx, dirKey)
-	for change := range watcher {
+	e.WatchResp = e.cli.Watch(ctx, dirKey)
+	for change := range e.WatchResp {
 		if len(change.Events) <= 0 {
 			continue
 		}
 		eec := new(EtcdEvent)
 		switch change.Events[0].Type {
 		case v3.EventTypeDelete:
-			copy(eec.Key, change.Events[0].Kv.Key)
-			copy(eec.Value, change.Events[0].Kv.Key)
+			eec.Key = append(eec.Key, change.Events[0].Kv.Key...)
+			eec.Value = append(eec.Value, change.Events[0].Kv.Value...)
 			eec.Index = change.Header.GetRaftTerm()
 			e.EtcdEventChan <- eec
 		case v3.EventTypePut:
-			copy(eec.Key, change.Events[0].Kv.Key)
-			copy(eec.Value, change.Events[0].Kv.Key)
+			eec.Key = append(eec.Key, change.Events[0].Kv.Key...)
+			eec.Value = append(eec.Value, change.Events[0].Kv.Value...)
 			eec.Index = change.Header.GetRaftTerm()
 			e.EtcdEventChan <- eec
 		}
@@ -79,6 +80,7 @@ func (e *EtcdCluster) Close() {
 	if err := e.cli.Close(); err != nil {
 		log.Println(err)
 	}
+
 	return
 }
 
