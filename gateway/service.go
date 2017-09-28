@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -85,10 +84,27 @@ func InitDefaultService() {
 		}
 		w.Write(re.Json())
 	})
-	DefaultService.R.router.GET("/cmd", func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	DefaultService.R.router.GET(fmt.Sprintf("/%s/cmd", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 		pprof.Cmdline(w, req)
 	})
-	//DefaultService
+	DefaultService.R.router.GET(fmt.Sprintf("/%s/profile", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		pprof.Profile(w, req)
+	})
+	DefaultService.R.router.GET(fmt.Sprintf("/%s/trace", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		pprof.Trace(w, req)
+	})
+	DefaultService.R.router.GET(fmt.Sprintf("/%s/symbol", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		pprof.Symbol(w, req)
+	})
+	DefaultService.R.router.GET(fmt.Sprintf("/%s/goroutine", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		pprof.Handler("goroutine").ServeHTTP(w, req)
+	})
+	DefaultService.R.router.GET(fmt.Sprintf("/%s/heap", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		pprof.Handler("heap").ServeHTTP(w, req)
+	})
+	DefaultService.R.router.GET(fmt.Sprintf("/%s/block", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		pprof.Handler("block").ServeHTTP(w, req)
+	})
 
 }
 
@@ -157,9 +173,6 @@ func (srv *ApiService) MappingApiService(si *servicedesc.ServiceDesc) error {
 			}
 		}
 	}
-	data, _ := json.Marshal(srv)
-	log.Info(string(data))
-	////////end mapping service info//////////
 	return nil
 }
 
