@@ -2,11 +2,16 @@ package gateway
 
 import (
 	"encoding/json"
+
+	"github.com/oldtree/apiGateway/gateway/servicedesc"
 )
 
 const (
 	//NodeStatusOK : node is ok
-	NodeStatusOK = 1
+	NodeStatusOK          = 1
+	NodeStatusUnReachable = 2
+	NodeStatusOverHit     = 3
+
 	//NodeStatusError : node is not aviliable
 	NodeStatusError = -1
 )
@@ -33,6 +38,16 @@ type Node struct {
 //NewNode : Create a new node
 func NewNode() *Node {
 	return &Node{}
+}
+
+func NewNodeFromData(data []byte) *Node {
+	nodedesc := servicedesc.NewNodeDesc()
+	err := json.Unmarshal(data, nodedesc)
+	if err != nil {
+		return nil
+	}
+	node := NewDefaultNode(nodedesc.SrvName, nodedesc.Address, nodedesc.Id, nodedesc.Hostname)
+	return node
 }
 
 func NewDefaultNode(srv string, address string, id int, hostname string) *Node {

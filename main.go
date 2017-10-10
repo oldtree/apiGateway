@@ -19,6 +19,7 @@ import (
 	"github.com/FlyCynomys/tools/log"
 	"github.com/oldtree/apiGateway/gateway"
 	"github.com/oldtree/apiGateway/gateway/servicedesc"
+	"github.com/oldtree/apiGateway/gateway/utils"
 )
 
 var config = flag.String("config", "config.json", "config file path")
@@ -28,8 +29,8 @@ func Init() {
 	go enginx.Doorman()
 	go func() {
 		time.Sleep(time.Second * 5)
-		e := new(gateway.Event)
-		e.EventType = gateway.EventServiceAdd
+		e := new(utils.Event)
+		e.EventType = utils.EventServiceAdd
 		e.TimeStamp = time.Now().String()
 		newservice := servicedesc.NewServiceDesc()
 		data, err := ioutil.ReadFile("sample.json")
@@ -53,8 +54,8 @@ func Init() {
 		e.Content = srv
 		enginx.Notice <- e
 
-		nodee := new(gateway.Event)
-		nodee.EventType = gateway.EventServiceNodeAdd
+		nodee := new(utils.Event)
+		nodee.EventType = utils.EventNodeAdd
 		nodee.TimeStamp = time.Now().String()
 		data, err = ioutil.ReadFile("node.json")
 		if err != nil {

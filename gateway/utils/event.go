@@ -1,4 +1,4 @@
-package gateway
+package utils
 
 import "encoding/json"
 
@@ -8,10 +8,10 @@ const (
 	EventServiceUpdate
 	EventServiceDelete
 
-	EventServiceNodeGet
-	EventServiceNodeAdd
-	EventServiceNodeUpdate
-	EventServiceNodeDelete
+	EventNodeGet
+	EventNodeAdd
+	EventNodeUpdate
+	EventNodeDelete
 )
 
 type Event struct {

@@ -11,6 +11,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 )
 
+type EventCallback func(ee *EtcdEvent) error
+
 func NewEtcdCluster() *EtcdCluster {
 	return &EtcdCluster{}
 }
@@ -19,6 +21,7 @@ type EtcdEvent struct {
 	Key   []byte `json:"key,omitempty"`
 	Value []byte `json:"value,omitempty"`
 	Index uint64 `json:"index,omitempty"`
+	Type  string `json:"type,omitempty"`
 }
 
 type EtcdCluster struct {
@@ -27,8 +30,9 @@ type EtcdCluster struct {
 	ConnectionTimeout int64
 	RequestTimeout    int64
 	cli               *v3.Client
-	EtcdEventChan     chan *EtcdEvent
 	WatchResp         v3.WatchChan
+
+	EtcdEventCallback EventCallback
 }
 
 func (e *EtcdCluster) Init(address []string) error {
@@ -66,12 +70,14 @@ func (e *EtcdCluster) WatchDir(dirKey string) error {
 			eec.Key = append(eec.Key, change.Events[0].Kv.Key...)
 			eec.Value = append(eec.Value, change.Events[0].Kv.Value...)
 			eec.Index = change.Header.GetRaftTerm()
-			e.EtcdEventChan <- eec
+			eec.Type = "DELETE"
+			e.EtcdEventCallback(eec)
 		case v3.EventTypePut:
 			eec.Key = append(eec.Key, change.Events[0].Kv.Key...)
 			eec.Value = append(eec.Value, change.Events[0].Kv.Value...)
 			eec.Index = change.Header.GetRaftTerm()
-			e.EtcdEventChan <- eec
+			eec.Type = "PUT"
+			e.EtcdEventCallback(eec)
 		}
 	}
 	return nil

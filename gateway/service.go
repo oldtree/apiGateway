@@ -1,11 +1,14 @@
 package gateway
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/http/pprof"
 	"os"
 	"runtime"
@@ -17,6 +20,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/oldtree/apiGateway/gateway/servicedesc"
+	"github.com/oldtree/apiGateway/gateway/utils"
 )
 
 const (
@@ -55,14 +59,14 @@ func InitDefaultService() {
 		sysinfo.CgoCall = runtime.NumCgoCall()
 		sysinfo.PWD, _ = os.Getwd()
 		sysinfo.StartTime = starttime
-		re := new(Result)
+		re := new(utils.Result)
 		re.Code = 1
 		re.Description = "ok"
 		re.Data = sysinfo
 		w.Write(re.Json())
 	})
 	DefaultService.R.router.GET(fmt.Sprintf("/%s/app/handles", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-		re := new(Result)
+		re := new(utils.Result)
 		re.Code = 1
 		re.Description = "ok"
 		re.Data = nil
@@ -70,7 +74,7 @@ func InitDefaultService() {
 	})
 	DefaultService.R.router.GET(fmt.Sprintf("/favicon.ico", DefaultService.ServiceName), func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 		data, err := ioutil.ReadFile("favicon.ico")
-		re := new(Result)
+		re := new(utils.Result)
 		if err != nil {
 			re.Code = -1
 			re.Description = "error"
@@ -122,8 +126,10 @@ type ApiService struct {
 	ReadWriteTimeout  int64  `json:"read_write_timeout,omitempty"`
 	ConnectionTimeout int64  `json:"connection_timeout,omitempty"`
 
-	R      *Route       `json:"r,omitempty"`
+	R      *Route       `json:"route,omitempty"`
 	client *http.Client `json:"client,omitempty"`
+
+	XEtag map[string]string `json:"x_etag,omitempty"`
 
 	sync.Mutex `json:"mutex"`
 	OnlineTime time.Time `json:"online_time,omitempty"`
@@ -135,6 +141,19 @@ func NewApiService() *ApiService {
 	}
 	apiSrv.R = NewRoute(apiSrv)
 	return apiSrv
+}
+
+func (srv *ApiService) MappingApiServiceFromData(data []byte) error {
+	if len(data) <= 0 {
+		return nil
+	}
+	si := new(servicedesc.ServiceDesc)
+	err := json.Unmarshal(data, si)
+	if err != nil {
+		return err
+	}
+	err = srv.MappingApiService(si)
+	return nil
 }
 
 func (srv *ApiService) MappingApiService(si *servicedesc.ServiceDesc) error {
@@ -173,6 +192,14 @@ func (srv *ApiService) MappingApiService(si *servicedesc.ServiceDesc) error {
 			}
 		}
 	}
+	if len(si.XEtag) >= 0 {
+		srv.XEtag = make(map[string]string, 16)
+		for key, value := range si.XEtag {
+			srv.XEtag[key] = value
+		}
+	} else {
+		srv.XEtag = nil
+	}
 	return nil
 }
 
@@ -180,7 +207,6 @@ func (srv *ApiService) InitServiceHttpClient() error {
 	srv.client = &http.Client{
 		Timeout: time.Duration(0),
 		Transport: &http.Transport{
-
 			DialContext: (&net.Dialer{
 				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,
@@ -198,50 +224,6 @@ func (srv *ApiService) InitServiceHttpClient() error {
 		},
 	}
 	return nil
-}
-
-func copyRequest(srcR *http.Request, urlStr string, method string) (*http.Request, error) {
-	if srcR == nil {
-		return nil, fmt.Errorf("src request is nil")
-	}
-	var nReq *http.Request
-	var err error
-	switch method {
-	case "GET", "get":
-		nReq, err = http.NewRequest(method, urlStr, nil)
-		if err != nil {
-			return nil, err
-		}
-	case "PUT", "put", "POST", "post":
-
-		if contentType := srcR.Header.Get("Content-Type"); strings.Contains(contentType, "x-www-form-urlencoded") {
-			srcR.ParseForm()
-			nReq, err = http.NewRequest(method, urlStr, strings.NewReader(srcR.PostForm.Encode()))
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			nReq, err = http.NewRequest(method, urlStr, srcR.Body)
-			if err != nil {
-				return nil, err
-			}
-		}
-	case "delete", "DELETE":
-		nReq, err = http.NewRequest(method, urlStr, nil)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("unsupport method")
-	}
-
-	nReq.Header = make(http.Header, len(srcR.Header))
-	for key, value := range srcR.Header {
-		va := make([]string, len(value))
-		copy(va, value)
-		nReq.Header[key] = va
-	}
-	return nReq, nil
 }
 
 func (srv *ApiService) HandleWrapGetMethod(innerpath string) httprouter.Handle {
@@ -348,6 +330,9 @@ func (srv *ApiService) HandleWrapPostMethod(innerpath string) httprouter.Handle 
 		retry = 0
 		for status == 0 {
 			node = srv.SelectNode()
+			if node == nil {
+				return
+			}
 			urlStr := fmt.Sprintf("%s://%s/%s?%s", srv.Protocal, node.Address, innerpath, req.URL.RawQuery)
 			log.Info(urlStr)
 			req2Endpoinrt, err = copyRequest(req, urlStr, "POST")
@@ -650,7 +635,22 @@ func (srv *ApiService) AddNode(n *Node) error {
 	return nil
 }
 
-func (srv ApiService) UpdateNode(n *Node) error {
+func (srv *ApiService) UpdateNode(n *Node) error {
+	if n == nil {
+		return fmt.Errorf("node info is nil")
+	}
+	defer func() {
+		if re := recover(); re != nil {
+			log.Info(re)
+		}
+	}()
+	srv.Lock()
+	defer srv.Unlock()
+	if _, ok := srv.BackendMap[n.NodeID]; ok {
+		return fmt.Errorf("node [%d] is exist", n.NodeID)
+	} else {
+		srv.BackendMap[n.NodeID] = n
+	}
 	return nil
 }
 
@@ -667,4 +667,56 @@ func (srv *ApiService) RemoveNode(n *Node) error {
 	defer srv.Unlock()
 	delete(srv.BackendMap, n.NodeID)
 	return nil
+}
+
+func copyResuqetWithTrace(srcR *http.Request, urlStr string, method string) (*http.Request, error) {
+	ctx, cancelfunc := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	ctx = httptrace.WithClientTrace(ctx, nil)
+	defer cancelfunc()
+
+	return nil, nil
+}
+
+func copyRequest(srcR *http.Request, urlStr string, method string) (*http.Request, error) {
+	if srcR == nil {
+		return nil, fmt.Errorf("src request is nil")
+	}
+	var nReq *http.Request
+	var err error
+	switch method {
+	case "GET", "get":
+		nReq, err = http.NewRequest(method, urlStr, nil)
+		if err != nil {
+			return nil, err
+		}
+	case "PUT", "put", "POST", "post":
+
+		if contentType := srcR.Header.Get("Content-Type"); strings.Contains(contentType, "x-www-form-urlencoded") {
+			srcR.ParseForm()
+			nReq, err = http.NewRequest(method, urlStr, strings.NewReader(srcR.PostForm.Encode()))
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			nReq, err = http.NewRequest(method, urlStr, srcR.Body)
+			if err != nil {
+				return nil, err
+			}
+		}
+	case "delete", "DELETE":
+		nReq, err = http.NewRequest(method, urlStr, nil)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unsupport method")
+	}
+
+	nReq.Header = make(http.Header, len(srcR.Header))
+	for key, value := range srcR.Header {
+		va := make([]string, len(value))
+		copy(va, value)
+		nReq.Header[key] = va
+	}
+	return nReq, nil
 }

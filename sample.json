@@ -5,6 +5,9 @@
     "load_blance_type":1,
     "read_write_timeout":300,
     "connection_timeout":5,
+    "x_etag":{
+        "hello":"wolrd"
+    },
     "api":{
         "info":[
                     {
