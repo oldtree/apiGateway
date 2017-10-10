@@ -1,0 +1,11 @@
+{
+    "version":"0.0.1",
+    "port":":2222",
+    "etcd_config":{
+        "etcd_endpoint":[
+          "http://127.0.0.1:2379"
+        ],
+        "connection_timeout":30,
+        "root_dir":"/v2/keys/gateway"
+    }
+}

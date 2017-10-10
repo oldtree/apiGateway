@@ -18,11 +18,12 @@ import (
 
 	"github.com/FlyCynomys/tools/log"
 	"github.com/oldtree/apiGateway/gateway"
+	cfg "github.com/oldtree/apiGateway/gateway/config"
 	"github.com/oldtree/apiGateway/gateway/servicedesc"
 	"github.com/oldtree/apiGateway/gateway/utils"
 )
 
-var config = flag.String("config", "config.json", "config file path")
+var configfile = flag.String("config", "config.json", "config file path")
 
 func Init() {
 	enginx := gateway.NewEngine()
@@ -90,12 +91,12 @@ func Init() {
 		},
 	}
 	srv := http.Server{
-		ReadTimeout:  5 * time.Second,
+		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
 		TLSConfig:    tlsconfig,
 		Handler:      enginx,
-		Addr:         ":2222",
+		Addr:         cfg.GetConfig().Port,
 	}
 	srv.ListenAndServe()
 }
@@ -103,19 +104,45 @@ func Init() {
 func main() {
 	flag.Parse()
 	runtime.GOMAXPROCS(runtime.NumCPU())
-
+	if err := cfg.LoadConfig(*configfile); err != nil {
+		log.Error("load condig file failed : ", err.Error())
+		return
+	}
+	log.Info("start init default server", cfg.GetConfig().Port)
 	Init()
+	log.Info("end init default server", cfg.GetConfig().EtcdConfig)
 
 	sc := make(chan os.Signal, 1)
+SYSCALL:
 
 	signal.Notify(sc,
 		syscall.SIGINT,
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
+		syscall.SIGKILL,
+		syscall.SIGTRAP,
 	)
 	select {
 	case si := <-sc:
-		fmt.Println("recv signal : ", si.String())
+		switch si {
+		case syscall.SIGINT:
+			log.Info("signal : ", si.String())
+			return
+		case syscall.SIGTERM:
+			log.Info("signal : ", si.String())
+			goto SYSCALL
+		case syscall.SIGQUIT:
+			log.Info("signal : ", si.String())
+			return
+		case syscall.SIGKILL:
+			log.Info("signal : ", si.String())
+			return
+		case syscall.SIGTRAP:
+			log.Info("signal : ", si.String())
+			goto SYSCALL
+		default:
+			goto SYSCALL
+		}
 	}
 
 }

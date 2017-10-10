@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FlyCynomys/tools/log"
+	"github.com/oldtree/apiGateway/gateway/config"
 	"github.com/oldtree/apiGateway/gateway/etcdop"
 	"github.com/oldtree/apiGateway/gateway/utils"
 )
@@ -20,12 +21,12 @@ type Engine struct {
 }
 
 var defaultEngine *Engine
-var singleinitf *sync.Once
 
 func DefaultEngine() *Engine {
-	singleinitf.Do(func() {
-		defaultEngine = NewEngine()
-	})
+	if defaultEngine != nil {
+		return defaultEngine
+	}
+	defaultEngine = NewEngine()
 	return defaultEngine
 }
 
@@ -35,7 +36,7 @@ func NewEngine() *Engine {
 		Notice:        make(chan *utils.Event, 16),
 		EtcdOperation: etcdop.NewEtcdCluster(),
 	}
-	err := temp.EtcdOperation.Init([]string{"http://localhost:2379"})
+	err := temp.EtcdOperation.Init(config.GetConfig().EtcdConfig.EtcdEndpoint)
 	if err != nil {
 		return nil
 	}

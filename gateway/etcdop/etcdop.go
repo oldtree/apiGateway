@@ -11,6 +11,15 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 )
 
+/*
+/v2/keys/gateway  服务信息的根目录
+/v2/keys/gateway/service 服务的目录
+/v2/keys/gateway/service/api 服务的api映射信息目录
+/v2/keys/gateway/service/node 服务的后端可工作节点信息
+/v2/keys/gateway/service/config  服务的配置信息
+/v2/keys/gateway/service/errors  服务的返回错误信息配置
+*/
+
 type EventCallback func(ee *EtcdEvent) error
 
 func NewEtcdCluster() *EtcdCluster {
