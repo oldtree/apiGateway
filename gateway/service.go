@@ -226,6 +226,33 @@ func (srv *ApiService) InitServiceHttpClient() error {
 	return nil
 }
 
+func (srv *ApiService) MiddleWareWrap(method string, innerpath string, middleware interface{}) httprouter.Handle {
+
+	switch method {
+	case "GET":
+		return srv.HandleWrapGetMethod(innerpath)
+	case "POST":
+		return srv.HandleWrapPostMethod(innerpath)
+	case "PUT":
+		return srv.HandleWrapPutMethod(innerpath)
+	case "DELETE":
+		return srv.HandleWrapDeleteMethod(innerpath)
+	default:
+		return func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(404)
+			w.Write([]byte("request method not support"))
+			return
+		}
+	}
+	return func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(404)
+		w.Write([]byte("request method not support"))
+		return
+	}
+}
+
 func (srv *ApiService) HandleWrapGetMethod(innerpath string) httprouter.Handle {
 	return func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 		var (
