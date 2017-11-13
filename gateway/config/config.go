@@ -12,19 +12,18 @@ func init() {
 var cfg *Config
 
 type Config struct {
-	Version    string      `json:"version,omitempty"`
-	Port       string      `json:"port,omitempty"`
-	EtcdConfig *EtcdConfig `json:"etcd_config,omitempty"`
+	Version    string          `json:"version,omitempty"`
+	Port       string          `json:"port,omitempty"`
+	EtcdConfig *DiscoverConfig `json:"discoverconfig,omitempty"`
+}
+
+type DiscoverConfig struct {
+	Name         string
+	RealDiscover interface{}
 }
 
 func GetConfig() *Config {
 	return cfg
-}
-
-type EtcdConfig struct {
-	EtcdEndpoint      []string `json:"etcd_endpoint,omitempty"`
-	ConnectionTimeout int64    `json:"connection_timeout,omitempty"`
-	RootDir           string   `json:"root_dir,omitempty"`
 }
 
 func LoadConfig(path string) error {
@@ -37,4 +36,28 @@ func LoadConfig(path string) error {
 		return err
 	}
 	return nil
+}
+
+type EtcdConfig struct {
+	EtcdEndpoint      []string `json:"etcd_endpoint,omitempty"`
+	ConnectionTimeout int64    `json:"connection_timeout,omitempty"`
+	RootDir           string   `json:"root_dir,omitempty"`
+}
+
+type KubernetesConfig struct {
+}
+
+type BoltConfig struct {
+}
+
+type ConsulConfig struct {
+}
+
+type PostgresqlConfig struct {
+}
+
+type RedisConfig struct {
+}
+
+type LogConfig struct {
 }

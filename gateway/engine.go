@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/FlyCynomys/tools/log"
+	"github.com/oldtree/apiGateway/gateway/base/etcdop"
 	"github.com/oldtree/apiGateway/gateway/config"
-	"github.com/oldtree/apiGateway/gateway/etcdop"
 	"github.com/oldtree/apiGateway/gateway/utils"
 )
 

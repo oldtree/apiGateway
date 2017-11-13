@@ -113,6 +113,7 @@ func main() {
 	log.Info("end init default server", cfg.GetConfig().EtcdConfig)
 
 	sc := make(chan os.Signal, 1)
+
 SYSCALL:
 
 	signal.Notify(sc,
