@@ -8,16 +8,14 @@ import (
 	"time"
 
 	"github.com/FlyCynomys/tools/log"
-	"github.com/oldtree/apiGateway/gateway/base/etcdop"
-	"github.com/oldtree/apiGateway/gateway/config"
+	"github.com/oldtree/apiGateway/gateway/base/etcd"
 	"github.com/oldtree/apiGateway/gateway/utils"
 )
 
 type Engine struct {
 	SrvMap map[string]http.Handler
 	sync.RWMutex
-	Notice        chan *utils.Event
-	EtcdOperation *etcdop.EtcdCluster
+	Notice chan *utils.Event
 }
 
 var defaultEngine *Engine
@@ -32,15 +30,10 @@ func DefaultEngine() *Engine {
 
 func NewEngine() *Engine {
 	temp := Engine{
-		SrvMap:        make(map[string]http.Handler, 16),
-		Notice:        make(chan *utils.Event, 16),
-		EtcdOperation: etcdop.NewEtcdCluster(),
+		SrvMap: make(map[string]http.Handler, 16),
+		Notice: make(chan *utils.Event, 16),
 	}
-	err := temp.EtcdOperation.Init(config.GetConfig().EtcdConfig.EtcdEndpoint)
-	if err != nil {
-		return nil
-	}
-	temp.EtcdOperation.EtcdEventCallback = temp.EventCallback
+
 	return &temp
 }
 

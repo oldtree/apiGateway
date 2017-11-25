@@ -19,7 +19,7 @@ import (
 	"github.com/FlyCynomys/tools/log"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/oldtree/apiGateway/gateway/servicedesc"
+	"github.com/oldtree/apiGateway/gateway/description/servicedesc"
 	"github.com/oldtree/apiGateway/gateway/utils"
 )
 
@@ -126,8 +126,9 @@ type ApiService struct {
 	ReadWriteTimeout  int64  `json:"read_write_timeout,omitempty"`
 	ConnectionTimeout int64  `json:"connection_timeout,omitempty"`
 
-	R      *Route       `json:"route,omitempty"`
-	client *http.Client `json:"client,omitempty"`
+	UseRouteMapping bool         `json:"use_route_mapping"`
+	R               *Route       `json:"route,omitempty"`
+	client          *http.Client `json:"client,omitempty"`
 
 	XEtag map[string]string `json:"x_etag,omitempty"`
 

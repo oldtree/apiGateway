@@ -3,7 +3,7 @@ package gateway
 import (
 	"encoding/json"
 
-	"github.com/oldtree/apiGateway/gateway/servicedesc"
+	"github.com/oldtree/apiGateway/gateway/description/servicedesc"
 )
 
 const (

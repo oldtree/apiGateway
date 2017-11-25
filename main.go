@@ -19,7 +19,7 @@ import (
 	"github.com/FlyCynomys/tools/log"
 	"github.com/oldtree/apiGateway/gateway"
 	cfg "github.com/oldtree/apiGateway/gateway/config"
-	"github.com/oldtree/apiGateway/gateway/servicedesc"
+	"github.com/oldtree/apiGateway/gateway/description/servicedesc"
 	"github.com/oldtree/apiGateway/gateway/utils"
 )
 
