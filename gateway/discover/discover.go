@@ -25,13 +25,6 @@ type Discover interface {
 	BroadCast(interface{}) bool
 }
 
-type DiscoverAdpater struct {
-	DiscoverType string
-	Dis          Discover
-	Docter       Docter
-	Data         chan []byte
-}
-
 type BuildDiscover func() (Discover, Docter)
 
 var etcdfunc BuildDiscover
@@ -40,6 +33,13 @@ var redisfunc BuildDiscover
 var consulfunc BuildDiscover
 var boltdbfunc BuildDiscover
 var postresqlfunc BuildDiscover
+
+type DiscoverAdpater struct {
+	DiscoverType string
+	Dis          Discover
+	Docter       Docter
+	Data         chan []byte
+}
 
 func (d *DiscoverAdpater) BuildAdapter(fn BuildDiscover) error {
 

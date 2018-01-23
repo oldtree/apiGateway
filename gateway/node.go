@@ -7,13 +7,14 @@ import (
 )
 
 const (
-	//NodeStatusOK : node is ok
-	NodeStatusOK          = 1
-	NodeStatusUnReachable = 2
-	NodeStatusOverHit     = 3
-
 	//NodeStatusError : node is not aviliable
-	NodeStatusError = -1
+	NodeStatusError = 1 << iota
+	//NodeStatusOK : node is ok
+	NodeStatusOK
+	//node is temp not reach able
+	NodeStatusUnReachable
+	//node access number per minitues too hot
+	NodeStatusOverHit
 )
 
 //Node 只包含节点的运行状态信息，连接属性信息，以及一些描述信息

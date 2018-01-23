@@ -1,4 +1,4 @@
-package middleware
+package provider
 
 import (
 	"github.com/julienschmidt/httprouter"
